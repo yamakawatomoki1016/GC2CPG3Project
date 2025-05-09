@@ -29,7 +29,7 @@ int main() {
         scanf_s("%d", &userGuess);
 
         printf("結果を判定中...\n");
-        waitSeconds(3); // 3秒待つ
+        waitSeconds(3);
 
         judgeResult(dice, isEven);
 
@@ -42,7 +42,7 @@ int main() {
         }
 
         printf("もう一度プレイしますか？ (y/n)：");
-        scanf_s(" %c", &playAgain, 2);// 空白を入れてバッファの改行を読み飛ばす
+        scanf_s(" %c", &playAgain, 2);
 
     } while (playAgain == 'y' || playAgain == 'Y');
 
