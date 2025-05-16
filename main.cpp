@@ -1,62 +1,62 @@
-﻿#include <stdio.h>
-#include <stdlib.h>
-#include <time.h>
+﻿#include <iostream>
+#include <cstdlib>
+#include <ctime>
+#include <functional>
+#include <thread>
+#include <chrono>
 
-// コールバック関数のプロトタイプ宣言
-void judgeResult(int dice, int (*callback)(int));
-
-// 偶数なら1、奇数なら0を返す関数
-int isEven(int num) {
+// 偶数なら true、奇数なら false
+bool isEven(int num) {
     return num % 2 == 0;
 }
 
-// 時間待機関数（約3秒）
-void waitSeconds(int seconds) {
-    time_t start = time(NULL);
-    while (time(NULL) - start < seconds);
+// 3秒待機する関数
+void SetTimeout(int seconds) {
+    std::this_thread::sleep_for(std::chrono::seconds(seconds));
 }
 
 int main() {
     int userGuess;
     char playAgain;
 
-    srand((unsigned int)time(NULL));
+    std::srand(static_cast<unsigned int>(std::time(nullptr)));
 
     do {
-        int dice = rand() % 6 + 1;
+        int dice = std::rand() % 6 + 1;
 
-        printf("サイコロの出目は奇数（0）か偶数（1）かを当ててください：");
-        scanf_s("%d", &userGuess);
+        std::cout << "サイコロの出目は奇数（0）か偶数（1）かを当ててください：";
+        std::cin >> userGuess;
 
-        printf("結果を判定中...\n");
-        waitSeconds(3);
+        std::cout << "結果を判定中...\n";
+        SetTimeout(3);
 
-        judgeResult(dice, isEven);
+        //userGuess をキャプチャして std::function にラムダを格納
+        std::function<void(int)> judge = [=](int result) {
+            std::cout << "サイコロの出目は: " << result << "\n";
+            if (isEven(result)) {
+                std::cout << "これは偶数（丁）です。\n";
+            }
+            else {
+                std::cout << "これは奇数（半）です。\n";
+            }
 
-        int correct = isEven(dice);
-        if (userGuess == correct) {
-            printf("正解！\n");
-        }
-        else {
-            printf("不正解！\n");
-        }
+            int correct = isEven(result);
+            if (userGuess == correct) {
+                std::cout << "正解！\n";
+            }
+            else {
+                std::cout << "不正解！\n";
+            }
+            };
 
-        printf("もう一度プレイしますか？ (y/n)：");
-        scanf_s(" %c", &playAgain, 2);
+        // 呼び出し
+        judge(dice);
+
+        std::cout << "もう一度プレイしますか？ (y/n)：";
+        std::cin >> playAgain;
 
     } while (playAgain == 'y' || playAgain == 'Y');
 
-    printf("ゲームを終了します。\n");
-
+    std::cout << "ゲームを終了します。\n";
     return 0;
-}
-
-void judgeResult(int dice, int (*callback)(int)) {
-    printf("サイコロの出目は: %d\n", dice);
-    if (callback(dice)) {
-        printf("これは偶数（丁）です。\n");
-    }
-    else {
-        printf("これは奇数（半）です。\n");
-    }
 }
