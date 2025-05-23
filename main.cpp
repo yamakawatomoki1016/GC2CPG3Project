@@ -10,7 +10,11 @@ typedef struct {
     char email[100];
 } Customer;
 
-// 改行削除
+typedef struct {
+    char line[256];
+    long position;
+} CustomerLine;
+
 void trim_newline(char* str) {
     str[strcspn(str, "\n")] = '\0';
 }
@@ -31,8 +35,8 @@ void add_customer() {
     trim_newline(c.email);
 
     FILE* file;
-    errno_t err = fopen_s(&file, FILENAME, "a");
-    if (err != 0 || file == NULL) {
+    fopen_s(&file, FILENAME, "a");
+    if (!file) {
         perror("ファイルを開けませんでした");
         return;
     }
@@ -44,8 +48,8 @@ void add_customer() {
 
 void view_customers() {
     FILE* file;
-    errno_t err = fopen_s(&file, FILENAME, "r");
-    if (err != 0 || file == NULL) {
+    fopen_s(&file, FILENAME, "r");
+    if (!file) {
         printf("まだ顧客情報が登録されていません。\n\n");
         return;
     }
@@ -66,8 +70,8 @@ void search_customer() {
     trim_newline(keyword);
 
     FILE* file;
-    errno_t err = fopen_s(&file, FILENAME, "r");
-    if (err != 0 || file == NULL) {
+    fopen_s(&file, FILENAME, "r");
+    if (!file) {
         printf("ファイルを開けませんでした。\n");
         return;
     }
@@ -77,10 +81,10 @@ void search_customer() {
 
     while (fgets(line, sizeof(line), file)) {
         char line_copy[256];
-        strcpy_s(line_copy, sizeof(line_copy), line); // 安全なコピー
+        strcpy_s(line_copy, sizeof(line_copy), line);
 
         char* context = NULL;
-        char* name = strtok_s(line_copy, ",", &context); // 安全なトークナイズ
+        char* name = strtok_s(line_copy, ",", &context);
 
         if (name && strstr(name, keyword)) {
             printf("見つかりました: %s", line);
@@ -102,45 +106,82 @@ void delete_customer() {
     fgets(target, sizeof(target), stdin);
     trim_newline(target);
 
-    FILE* file, * temp;
-    errno_t err1 = fopen_s(&file, FILENAME, "r");
-    errno_t err2 = fopen_s(&temp, "temp.txt", "w");
-
-    if (err1 != 0 || file == NULL || err2 != 0 || temp == NULL) {
+    FILE* file;
+    fopen_s(&file, FILENAME, "r");
+    if (!file) {
         printf("ファイルを開けませんでした。\n");
         return;
     }
 
+    CustomerLine matches[100];
+    int match_count = 0;
     char line[256];
-    int deleted = 0;
+    long pos = 0;
 
     while (fgets(line, sizeof(line), file)) {
         char line_copy[256];
         strcpy_s(line_copy, sizeof(line_copy), line);
-
         char* context = NULL;
         char* name = strtok_s(line_copy, ",", &context);
 
         if (name && strcmp(name, target) == 0) {
-            deleted = 1; // 削除対象
-            continue;
+            strcpy_s(matches[match_count].line, sizeof(matches[match_count].line), line);
+            matches[match_count].position = pos;
+            match_count++;
         }
 
-        fputs(line, temp);
+        pos = ftell(file);
     }
 
     fclose(file);
+
+    if (match_count == 0) {
+        printf("顧客「%s」は見つかりませんでした。\n\n", target);
+        return;
+    }
+
+    printf("一致する顧客情報が複数見つかりました:\n");
+    for (int i = 0; i < match_count; i++) {
+        printf("%d: %s", i + 1, matches[i].line);
+    }
+
+    int choice = 0;
+    printf("削除する番号を選んでください（0でキャンセル）: ");
+    scanf_s("%d", &choice);
+    getchar(); // 改行除去
+
+    if (choice <= 0 || choice > match_count) {
+        printf("削除をキャンセルしました。\n\n");
+        return;
+    }
+
+    FILE* original, * temp;
+    fopen_s(&original, FILENAME, "r");
+    fopen_s(&temp, "temp.txt", "w");
+    if (!original || !temp) {
+        printf("ファイルを開けませんでした。\n");
+        return;
+    }
+
+    int current_index = 0;
+    while (fgets(line, sizeof(line), original)) {
+        if (strcmp(line, matches[choice - 1].line) == 0 && current_index == (choice - 1)) {
+            current_index++;
+            continue; // 1件だけ削除
+        }
+        fputs(line, temp);
+        if (strcmp(line, matches[current_index].line) == 0) {
+            current_index++;
+        }
+    }
+
+    fclose(original);
     fclose(temp);
 
     remove(FILENAME);
     rename("temp.txt", FILENAME);
 
-    if (deleted) {
-        printf("顧客「%s」の情報を削除しました。\n\n", target);
-    }
-    else {
-        printf("顧客「%s」は見つかりませんでした。\n\n", target);
-    }
+    printf("指定された顧客を削除しました。\n\n");
 }
 
 int main() {
